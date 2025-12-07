@@ -1,4 +1,3 @@
-
 import os
 import hmac
 import hashlib
@@ -9,7 +8,7 @@ import datetime as dt
 
 import pandas as pd
 from fastapi import FastAPI, Request, Form, UploadFile, File, Depends, HTTPException, status
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import RedirectResponse, HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -32,9 +31,11 @@ app = FastAPI(title="FHD Automated Reporting System")
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "app" / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "app" / "templates"))
 
+
 def sign_value(value: str) -> str:
     sig = hmac.new(SECRET_KEY.encode(), value.encode(), hashlib.sha256).hexdigest()
     return f"{value}|{sig}"
+
 
 def verify_signed_value(signed: str) -> Optional[str]:
     try:
@@ -46,6 +47,7 @@ def verify_signed_value(signed: str) -> Optional[str]:
         return value
     return None
 
+
 def get_current_user(request: Request) -> Optional[str]:
     cookie = request.cookies.get(SESSION_COOKIE_NAME)
     if not cookie:
@@ -53,13 +55,16 @@ def get_current_user(request: Request) -> Optional[str]:
     username = verify_signed_value(cookie)
     return username
 
+
 async def require_user(request: Request) -> str:
     user = get_current_user(request)
     if not user:
         raise HTTPException(status_code=status.HTTP_302_FOUND, headers={"Location": "/login"})
     return user
 
+
 def load_reports_index() -> list:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
     index_path = DATA_DIR / "reports_index.json"
     if not index_path.exists():
         return []
@@ -68,9 +73,12 @@ def load_reports_index() -> list:
     except Exception:
         return []
 
+
 def save_reports_index(items: list) -> None:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
     index_path = DATA_DIR / "reports_index.json"
     index_path.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
+
 
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
@@ -79,12 +87,14 @@ async def root(request: Request):
         return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
     return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
+
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     user = get_current_user(request)
     if user:
         return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
     return templates.TemplateResponse("login.html", {"request": request, "error": None, "user": None})
+
 
 @app.post("/login", response_class=HTMLResponse)
 async def login_submit(
@@ -110,11 +120,13 @@ async def login_submit(
     )
     return response
 
+
 @app.get("/logout")
 async def logout():
     response = RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     response.delete_cookie(SESSION_COOKIE_NAME)
     return response
+
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, user: str = Depends(require_user)):
@@ -139,13 +151,32 @@ async def dashboard(request: Request, user: str = Depends(require_user)):
         },
     )
 
+
+@app.get("/upload-center", response_class=HTMLResponse)
+async def upload_center(request: Request, user: str = Depends(require_user)):
+    """
+    Separate page that lists all upload runs with columns-count info
+    for Performance/Status/Booking files so you can validate schema changes.
+    """
+    reports = load_reports_index()
+    reports = sorted(reports, key=lambda r: r.get("created_at", ""), reverse=True)
+    return templates.TemplateResponse(
+        "upload_center.html",
+        {"request": request, "user": user, "reports": reports},
+    )
+
+
 @app.post("/upload", response_class=HTMLResponse)
 async def upload_file(
     request: Request,
     user: str = Depends(require_user),
     files: List[UploadFile] = File(...)
 ):
-    """Upload one or more Genesys CSV files and generate an Agent Productivity report using the Excel template."""
+    """
+    Upload Genesys CSV files (Performance + Status + Booking) and generate
+    an Agent Productivity report using the Excel template.
+    Also records per-file column counts for validation.
+    """
     UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -157,20 +188,42 @@ async def upload_file(
         dest = UPLOADS_DIR / safe_name
         with dest.open("wb") as f:
             f.write(await uf.read())
-        saved_files.append({"original": original, "path": dest})
+
+        # Try to detect number of columns for this CSV
+        col_count: Optional[int] = None
+        try:
+            df_sample = pd.read_csv(dest, nrows=1)
+            col_count = len(df_sample.columns)
+        except Exception:
+            col_count = None
+
+        saved_files.append(
+            {
+                "original": original,
+                "path": dest,
+                "columns": col_count,
+            }
+        )
 
     # Detect performance, status and booking CSVs by filename
     perf_path = None
     status_path = None
     booking_path = None
+    perf_cols = None
+    status_cols = None
+    booking_cols = None
+
     for item in saved_files:
         lower = item["original"].lower()
         if "performance" in lower and "summary" in lower and perf_path is None:
             perf_path = item["path"]
+            perf_cols = item.get("columns")
         if "status" in lower and "summary" in lower and status_path is None:
             status_path = item["path"]
+            status_cols = item.get("columns")
         if "booking" in lower and booking_path is None:
             booking_path = item["path"]
+            booking_cols = item.get("columns")
 
     if perf_path is None or status_path is None:
         return templates.TemplateResponse(
@@ -183,6 +236,7 @@ async def upload_file(
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
+    # Excel template must live in project root
     template_path = BASE_DIR / "Agent Report Template.xlsx"
     if not template_path.exists():
         return templates.TemplateResponse(
@@ -199,6 +253,7 @@ async def upload_file(
     out_xlsx = REPORTS_DIR / f"agent_productivity_{today_str}.xlsx"
     out_csv = REPORTS_DIR / f"agent_productivity_{today_str}.csv"
 
+    # Generate report (uses Genesys + Booking to fill your template)
     try:
         run_from_paths(perf_path, status_path, template_path, out_xlsx, out_csv, booking=booking_path)
     except Exception as e:
@@ -212,18 +267,49 @@ async def upload_file(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
+    # Build detailed files meta for history
+    files_meta = []
+    for item in saved_files:
+        lower = item["original"].lower()
+        if "performance" in lower and "summary" in lower:
+            file_type = "performance"
+        elif "status" in lower and "summary" in lower:
+            file_type = "status"
+        elif "booking" in lower:
+            file_type = "booking"
+        else:
+            file_type = "other"
+
+        files_meta.append(
+            {
+                "name": item["original"],
+                "stored": item["path"].name,
+                "columns": item.get("columns"),
+                "type": file_type,
+            }
+        )
+
+    # Update reports index
     reports = load_reports_index()
     report_entry = {
         "id": len(reports) + 1,
+        "date": today_str,
         "original_file": ", ".join([f["original"] for f in saved_files]),
         "stored_file": ", ".join([str(f["path"].name) for f in saved_files]),
         "report_file": str(out_xlsx.name),
+        "report_csv": str(out_csv.name),
         "created_by": user,
         "created_at": dt.datetime.utcnow().isoformat() + "Z",
+        # column counts for validation
+        "columns_perf": perf_cols,
+        "columns_status": status_cols,
+        "columns_booking": booking_cols,
+        "files_meta": files_meta,
     }
     reports.append(report_entry)
     save_reports_index(reports)
 
+    # Refresh dashboard stats
     stats: Dict[str, Any] = {}
     try:
         df_stats = pd.read_csv(out_csv)
@@ -258,6 +344,7 @@ async def upload_file(
         },
     )
 
+
 @app.get("/reports", response_class=HTMLResponse)
 async def list_reports(request: Request, user: str = Depends(require_user)):
     reports = load_reports_index()
@@ -265,6 +352,7 @@ async def list_reports(request: Request, user: str = Depends(require_user)):
     return templates.TemplateResponse(
         "reports.html", {"request": request, "user": user, "reports": reports}
     )
+
 
 @app.get("/reports/{report_id}", response_class=HTMLResponse)
 async def view_report(request: Request, report_id: int, user: str = Depends(require_user)):
@@ -281,10 +369,12 @@ async def view_report(request: Request, report_id: int, user: str = Depends(requ
         },
     )
 
+
 @app.get("/api/reports")
 async def api_reports(user: str = Depends(require_user)) -> Dict[str, Any]:
     reports = load_reports_index()
     return {"count": len(reports), "items": reports}
+
 
 @app.get("/genesys-dashboard", response_class=HTMLResponse)
 async def genesys_dashboard(request: Request, user: str = Depends(require_user)):
@@ -293,3 +383,25 @@ async def genesys_dashboard(request: Request, user: str = Depends(require_user))
         "genesys_dashboard.html",
         {"request": request, "user": user, "genesys_url": genesys_url},
     )
+
+
+@app.get("/files/reports/{filename}")
+async def download_report_file(filename: str, user: str = Depends(require_user)):
+    """
+    Download generated Excel/CSV reports from the /reports folder.
+    """
+    file_path = REPORTS_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    ext = file_path.suffix.lower()
+    if ext == ".xlsx":
+        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    elif ext == ".csv":
+        media_type = "text/csv"
+    else:
+        media_type = "application/octet-stream"
+
+    return FileResponse(file_path, media_type=media_type, filename=filename)
+
+# run with: uvicorn app.main:app --host 0.0.0.0 --port 8000
