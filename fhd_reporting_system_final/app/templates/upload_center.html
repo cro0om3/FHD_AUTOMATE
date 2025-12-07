@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Upload Center – FHD Reporting{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="card-header-row">
+    <div>
+      <h2>Upload Center</h2>
+      <p class="desc">
+        تاريخ كل تشغيل + نوع الملف + عدد الأعمدة لكل تقرير (Performance / Status / Booking) للتحقق من أي تغيّر في التقارير.
+      </p>
+    </div>
+    <div class="actions-row">
+      <a href="/dashboard" class="btn-link">← Back to Dashboard</a>
+    </div>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Date</th>
+          <th>Files</th>
+          <th>Perf Columns</th>
+          <th>Status Columns</th>
+          <th>Booking Columns</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if reports %}
+          {% for r in reports %}
+          <tr>
+            <td>{{ r.id }}</td>
+            <td>{{ r.date or r.created_at[:10] }}</td>
+            <td>
+              <ul class="file-list">
+                {% if r.files_meta %}
+                  {% for f in r.files_meta %}
+                    <li>
+                      <span class="file-type-pill">{{ f.type }}</span>
+                      {{ f.name }}{% if f.columns is not none %} <span class="file-columns">({{ f.columns }} cols)</span>{% endif %}
+                    </li>
+                  {% endfor %}
+                {% else %}
+                  {{ r.original_file }}
+                {% endif %}
+              </ul>
+            </td>
+            <td class="num">
+              {% if r.columns_perf is not none %}{{ r.columns_perf }}{% else %}–{% endif %}
+            </td>
+            <td class="num">
+              {% if r.columns_status is not none %}{{ r.columns_status }}{% else %}–{% endif %}
+            </td>
+            <td class="num">
+              {% if r.columns_booking is not none %}{{ r.columns_booking }}{% else %}–{% endif %}
+            </td>
+            <td>
+              <a href="/reports/{{ r.id }}" class="btn-link">View Report</a>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="7" class="empty-cell">
+              No uploads yet. Generate a report from the Dashboard first.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<style>
+  .card-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .table-wrapper {
+    margin-top: 4px;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid rgba(250, 204, 21, 0.25);
+    background: radial-gradient(circle at 0 0, rgba(250, 204, 21, 0.08), transparent 55%),
+                rgba(15, 23, 42, 0.96);
+  }
+  table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  table.data-table thead tr {
+    background: rgba(15, 23, 42, 0.98);
+  }
+  table.data-table th,
+  table.data-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(55, 65, 81, 0.8);
+    text-align: left;
+  }
+  table.data-table th {
+    font-weight: 600;
+    color: #facc15;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-size: 11px;
+  }
+  table.data-table tbody tr:nth-child(even) {
+    background: rgba(15, 23, 42, 0.94);
+  }
+  table.data-table tbody tr:nth-child(odd) {
+    background: rgba(15, 23, 42, 0.98);
+  }
+  table.data-table td.num {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .empty-cell {
+    text-align: center;
+    padding: 18px 12px;
+    color: #9ca3af;
+  }
+  .file-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .file-list li {
+    margin-bottom: 4px;
+  }
+  .file-type-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(250, 204, 21, 0.7);
+    color: #facc15;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-right: 6px;
+  }
+  .file-columns {
+    color: #9ca3af;
+    font-size: 11px;
+  }
+</style>
+{% endblock %}
