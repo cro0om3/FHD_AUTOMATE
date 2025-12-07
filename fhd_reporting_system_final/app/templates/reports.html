@@ -1,0 +1,26 @@
+
+{% extends "base.html" %}
+{% block title %}Reports – FHD Reporting{% endblock %}
+{% block content %}
+<section class="card">
+    <h2>All Reports</h2>
+    <p class="desc">List of all generated Agent Productivity reports.</p>
+    {% if reports %}
+        <ul class="report-list">
+            {% for r in reports %}
+                <li class="report-item">
+                    <div>
+                        <div class="report-title">{{ r.original_file }}</div>
+                        <div class="report-meta">
+                            ID {{ r.id }} · By {{ r.created_by }} · {{ r.created_at }} · Excel: {{ r.report_file }}
+                        </div>
+                    </div>
+                    <a href="/reports/{{ r.id }}" class="btn-link">View</a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="muted">No reports have been generated yet.</p>
+    {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,15 @@
+
+{% extends "base.html" %}
+{% block title %}Upload Error – FHD Reporting{% endblock %}
+{% block content %}
+<section class="card">
+    <h2>Upload Error</h2>
+    <p class="desc">We couldn't process your upload.</p>
+    <div class="status-box">
+        {{ message }}
+    </div>
+    <div class="actions-row">
+        <a href="/dashboard" class="btn-primary">Back to Dashboard</a>
+    </div>
+</section>
+{% endblock %}

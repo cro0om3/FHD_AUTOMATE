@@ -1,0 +1,21 @@
+
+{% extends "base.html" %}
+{% block title %}Upload Success – FHD Reporting{% endblock %}
+{% block content %}
+<section class="card">
+    <h2>Upload & Generation Successful</h2>
+    <p class="desc">Your Genesys CSV files were uploaded and an Excel report was generated using your template.</p>
+
+    <div class="status-box">
+        <p><strong>Files:</strong> {{ original_name }}</p>
+        <p><strong>Report ID:</strong> {{ report_entry.id }}</p>
+        <p><strong>Created by:</strong> {{ report_entry.created_by }}</p>
+        <p><strong>Created at:</strong> {{ report_entry.created_at }}</p>
+    </div>
+
+    <div class="actions-row">
+        <a href="/dashboard" class="btn-primary">Back to Dashboard</a>
+        <a href="/reports/{{ report_entry.id }}" class="btn-gold">Open Report</a>
+    </div>
+</section>
+{% endblock %}

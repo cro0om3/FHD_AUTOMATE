@@ -1,0 +1,26 @@
+
+{% extends "base.html" %}
+{% block title %}Login – FHD Reporting{% endblock %}
+{% block content %}
+<section class="auth-wrapper">
+    <div class="card auth-card">
+        <h1 class="auth-title">Welcome back</h1>
+        <p class="desc">Sign in to access your automated reporting console.</p>
+        {% if error %}
+            <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+        <form method="post" action="/login" class="auth-form">
+            <label class="field">
+                <span>Username</span>
+                <input type="text" name="username" required />
+            </label>
+            <label class="field">
+                <span>Password</span>
+                <input type="password" name="password" required />
+            </label>
+            <button type="submit" class="btn-gold full">Login</button>
+        </form>
+        <p class="hint">Default user: <code>admin / admin123</code></p>
+    </div>
+</section>
+{% endblock %}

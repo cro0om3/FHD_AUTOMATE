@@ -1,0 +1,53 @@
+
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}FHD Reporting{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
+    <script defer src="{{ url_for('static', path='js/main.js') }}"></script>
+</head>
+<body class="body">
+    <header class="topbar">
+        <div class="brand">
+            <div class="brand-logo">⚜</div>
+            <div class="brand-text">
+                <div class="brand-title">FHD Reporting Suite</div>
+                <div class="brand-sub">Gold • Black • Masoon • White</div>
+            </div>
+        </div>
+        <div class="topbar-right">
+            <nav class="nav-links">
+                {% if user %}
+                    <a href="/dashboard" class="nav-link">Dashboard</a>
+                    <a href="/reports" class="nav-link">Reports</a>
+                    <a href="/genesys-dashboard" class="nav-link">Genesys Dashboard</a>
+                {% endif %}
+            </nav>
+            <div class="theme-toggle">
+                <span class="theme-label">Light</span>
+                <label class="switch">
+                    <input type="checkbox" id="themeToggle">
+                    <span class="slider"></span>
+                </label>
+                <span class="theme-label">Dark</span>
+            </div>
+            <div class="user-chip">
+                {% if user %}
+                    <span class="user-name">{{ user }}</span>
+                    <a href="/logout" class="logout-link">Logout</a>
+                {% else %}
+                    <a href="/login" class="logout-link">Login</a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+    <footer class="footer">
+        <p>© 2025 FHD Automated Reporting System</p>
+    </footer>
+</body>
+</html>

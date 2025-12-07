@@ -1,0 +1,23 @@
+
+{% extends "base.html" %}
+{% block title %}Genesys Dashboard – FHD Reporting{% endblock %}
+{% block content %}
+<section class="card">
+    <h2>Genesys Live Dashboard</h2>
+    <p class="desc">
+        Embedded view of your Genesys Cloud analytics dashboard. If embedding is blocked by Genesys,
+        use the button below to open it in a new tab.
+    </p>
+    <div class="actions-row" style="margin-bottom: 10px;">
+        <a href="{{ genesys_url }}" target="_blank" class="btn-link">Open in new tab</a>
+    </div>
+    <div class="genesys-frame-wrapper">
+        <iframe 
+            src="{{ genesys_url }}"
+            class="genesys-frame"
+            loading="lazy"
+            referrerpolicy="no-referrer"
+        ></iframe>
+    </div>
+</section>
+{% endblock %}

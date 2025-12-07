@@ -1,0 +1,72 @@
+
+{% extends "base.html" %}
+{% block title %}Dashboard – FHD Reporting{% endblock %}
+{% block content %}
+<section class="kpi-row">
+    <div class="kpi-card">
+        <div class="kpi-label">Total Reports</div>
+        <div class="kpi-value">{{ stats.total_reports or 0 }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Last Report Date</div>
+        <div class="kpi-value">{{ stats.last_report_date or '—' }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Total Agents</div>
+        <div class="kpi-value">{{ stats.total_agents or 0 }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Total Calls</div>
+        <div class="kpi-value">
+            {% if stats.total_answered or stats.total_outbound %}
+                {{ (stats.total_answered or 0) + (stats.total_outbound or 0) }}
+            {% else %}
+                0
+            {% endif %}
+        </div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Avg AHT (min)</div>
+        <div class="kpi-value">{{ stats.avg_aht_min or 0 }}</div>
+    </div>
+</section>
+
+<section class="grid">
+    <div class="card">
+        <h2>Upload Data Files</h2>
+        <p class="desc">Upload your Genesys Agent Performance & Status CSV exports. The system will auto-fill your Excel template and update this dashboard.</p>
+        <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data" class="upload-form">
+            <label class="file-label">
+                <span>Select files (Performance + Status)</span>
+                <input type="file" name="files" accept=".csv" multiple required />
+            </label>
+            <button type="submit" class="btn-primary">Upload &amp; Generate Report</button>
+        </form>
+        <div class="status-box" id="fileStatus">
+            Choose both Agent Performance Summary and Agent Status Summary CSV files, then upload.
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Recent Reports</h2>
+        <p class="desc">Latest generated reports. Each entry represents one automated run using your Excel template.</p>
+        {% if recent_reports %}
+            <ul class="report-list">
+                {% for r in recent_reports %}
+                    <li class="report-item">
+                        <div>
+                            <div class="report-title">{{ r.original_file }}</div>
+                            <div class="report-meta">
+                                ID {{ r.id }} · By {{ r.created_by }} · {{ r.created_at }}
+                            </div>
+                        </div>
+                        <a href="/reports/{{ r.id }}" class="btn-link">View</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="muted">No reports yet. Upload files to generate the first one.</p>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
